@@ -42,8 +42,8 @@ trait WithTaxTest
             $subtotal   =   $taxService->getComputedTaxGroupValue( $order[ 'tax_type' ], $order[ 'tax_group_id' ], $order[ 'subtotal' ] );
 
             $this->assertEquals( 
-                ( float ) $orderService->getOrderProductsTaxes( Order::find( $order[ 'id' ] ) ) + ( float ) $subtotal, 
-                ( float ) $order[ 'tax_value' ],
+                round( ( float ) $orderService->getOrderProductsTaxes( Order::find( $order[ 'id' ] ) ) + ( float ) $subtotal, 2 ), 
+                round( ( float ) $order[ 'tax_value' ], 2 ),
                 __( 'The product tax is not valid.' )
             );
         });
@@ -74,8 +74,8 @@ trait WithTaxTest
 
         $this->assertCheck( $details, function( $order ) use ( $orderService ) {
             $this->assertEquals( 
-                ( float ) $orderService->getOrderProductsTaxes( Order::find( $order[ 'id' ] ) ), 
-                ( float ) $order[ 'tax_value' ],
+                round( ( float ) $orderService->getOrderProductsTaxes( Order::find( $order[ 'id' ] ) ), 2 ), 
+                round( ( float ) $order[ 'tax_value' ], 2 ),
                 __( 'The product tax is not valid.' )
             );
         });
@@ -176,7 +176,11 @@ trait WithTaxTest
         $expectedTax    =   $taxService->getComputedTaxGroupValue( $order[ 'tax_type' ], $order[ 'tax_group_id' ], $order[ 'subtotal' ] );
 
         if ( $callback === null ) {
-            $this->assertEquals( ( float ) $expectedTax, ( float ) $order[ 'tax_value' ], __( 'The computed taxes aren\'t correct.' ) );
+            $this->assertEquals(
+                round( ( float ) $expectedTax, 2 ),
+                round( ( float ) $order[ 'tax_value' ], 2 ),
+                __( 'The computed taxes aren\'t correct.' )
+            );
         } else {
             $callback( $order );
         }

@@ -58,7 +58,7 @@ jobs:
 
     # Compilar assets Vue.js + TailwindCSS con Vite
     - name: Build frontend assets
-      run: yarn build
+      run: yarn prod
 
     # Configurar .env desde .env.example
     - name: Configure .env file

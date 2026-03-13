@@ -39,7 +39,7 @@ jobs:
 
     # PHP 7.4 con todas las extensiones requeridas por NexoPOS
     - name: Set up PHP with required extensions
-      uses: shivammathur/setup-php@v2.33.0
+      uses: shivammathur/setup-php@v2
       with:
         php-version: '7.4'
         extensions: json, gd, bcmath, intl, openssl, mbstring, curl, xml, mysqli, zip, pdo, pdo_mysql

@@ -242,24 +242,22 @@ class TaxService
      */
     public function getComputedTaxGroupValue( $tax_type, $tax_group_id, $price )
     {
-        $taxGroup       =   TaxGroup::find( $tax_group_id );
-        $taxValue       =   0;  
+        $taxGroup   =   TaxGroup::find( $tax_group_id );
+        $taxValue   =   0;
 
         if ( $taxGroup instanceof TaxGroup ) {
-            $taxValue       =   $taxGroup->taxes
+            $taxValue   =   $taxGroup->taxes
                 ->map( function( $tax ) use ( $tax_type, $price ) {
-                    $taxValue           =   $this->getVatValue(
+                    return $this->getVatValue(
                         $tax_type,
                         floatval( $tax[ 'rate' ] ),
                         $price
                     );
-
-                    return $taxValue;
                 })
                 ->sum();
         }
 
-        return $taxValue;
+        return round( $taxValue, 2 );
     }
 
     /**
@@ -377,9 +375,9 @@ class TaxService
     public function getVatValue( $type, float $rate, float $value )
     {
         if ( $type === 'inclusive' ) {
-            return $value - $this->getComputedTaxValue( $type, $rate, $value );
+            return round( $value - $this->getComputedTaxValue( $type, $rate, $value ), 2 );
         } else if ( $type === 'exclusive' ) {
-            return $this->getComputedTaxValue( $type, $rate, $value ) - $value;
+            return round( $this->getComputedTaxValue( $type, $rate, $value ) - $value, 2 );
         }
     }
 
@@ -444,7 +442,7 @@ class TaxService
         ])->first();
 
         if ( $productTax instanceof ProductTax ) {
-            $productTax->name       =   $tax->name; // in case it has changed
+            $productTax->name       =   $tax->name;
             $productTax->rate       =   $tax->rate;
             $productTax->value      =   $taxValue;
             $productTax->author     =   Auth::id();
@@ -453,7 +451,7 @@ class TaxService
             $productTax                 =   new ProductTax;
             $productTax->product_id     =   $product->id;
             $productTax->tax_id         =   $tax->id;
-            $productTax->name           =   $tax->name; // in case it has changed
+            $productTax->name           =   $tax->name;
             $productTax->rate           =   $tax->rate;
             $productTax->value          =   $taxValue;
             $productTax->author         =   Auth::id();

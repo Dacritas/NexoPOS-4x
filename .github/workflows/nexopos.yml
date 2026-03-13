@@ -1,0 +1,130 @@
+name: NexoPOS CI/CD
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    # MySQL service
+    services:
+      mysql:
+        image: mysql:5.7
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: nexopos
+          MYSQL_USER: nexopos_user
+          MYSQL_PASSWORD: nexopos_password
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
+
+    steps:
+    - uses: actions/checkout@v4
+
+    # PHP 8.1 con todas las extensiones requeridas por NexoPOS
+    - name: Set up PHP with required extensions
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: json, gd, bcmath, intl, openssl, mbstring, curl, xml, mysqli, zip, pdo, pdo_mysql
+        tools: composer
+
+    # Node.js para compilar assets con Vite/Vue
+    - name: Set up Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '18'
+        cache: 'npm'
+
+    # Instalar dependencias PHP (Laravel)
+    - name: Install PHP dependencies
+      run: composer install --prefer-dist --no-progress --no-interaction
+
+    # Instalar dependencias JS
+    - name: Install JS dependencies
+      run: npm ci
+
+    # Compilar assets Vue.js + TailwindCSS con Vite
+    - name: Build frontend assets
+      run: npm run build
+
+    # Configurar .env desde .env.example
+    - name: Configure .env file
+      run: |
+        cp .env.example .env
+        sed -i 's/^APP_ENV=.*/APP_ENV=production/' .env
+        sed -i 's/^APP_DEBUG=.*/APP_DEBUG=false/' .env
+        sed -i 's/^DB_HOST=.*/DB_HOST=127.0.0.1/' .env
+        sed -i 's/^DB_DATABASE=.*/DB_DATABASE=nexopos/' .env
+        sed -i 's/^DB_USERNAME=.*/DB_USERNAME=nexopos_user/' .env
+        sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=nexopos_password/' .env
+        sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
+
+    # Generar app key de Laravel
+    - name: Generate application key
+      run: php artisan key:generate
+
+    # Ejecutar migraciones de base de datos
+    - name: Run database migrations
+      run: php artisan migrate --force
+
+    # Optimizar Laravel para producción
+    - name: Optimize Laravel for production
+      run: |
+        php artisan config:cache
+        php artisan route:cache
+        php artisan view:cache
+
+    # Crear backup de la base de datos migrada
+    - name: Create database backup
+      run: |
+        mysqldump -h 127.0.0.1 -u nexopos_user -pnexopos_password \
+          --single-transaction \
+          --routines \
+          --triggers \
+          nexopos > nexopos-database-backup.sql
+
+    # Crear ZIP de deploy (sin archivos innecesarios en producción)
+    - name: Create deployment ZIP
+      run: |
+        zip -r nexopos-deploy.zip . \
+          --exclude "*.git*" \
+          --exclude "*/.github/*" \
+          --exclude "*/tests/*" \
+          --exclude "*/node_modules/*" \
+          --exclude "*.env.example" \
+          --exclude "*.md" \
+          --exclude "phpunit.xml*" \
+          --exclude "vite.config.*" \
+          --exclude "package*.json" \
+          --exclude "tailwind.config.*" \
+          --exclude "postcss.config.*"
+
+    # Subir ZIP como artifact
+    - name: Upload deployment ZIP
+      uses: actions/upload-artifact@v4
+      with:
+        name: nexopos-deploy
+        path: nexopos-deploy.zip
+        retention-days: 7
+
+    # Subir backup de BD como artifact
+    - name: Upload database backup
+      uses: actions/upload-artifact@v4
+      with:
+        name: nexopos-database-backup
+        path: nexopos-database-backup.sql
+        retention-days: 7

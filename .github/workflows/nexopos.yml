@@ -38,7 +38,7 @@ jobs:
     - name: Set up PHP with required extensions
       uses: shivammathur/setup-php@v2
       with:
-        php-version: '8.1'
+        php-version: '7.4'
         extensions: json, gd, bcmath, intl, openssl, mbstring, curl, xml, mysqli, zip, pdo, pdo_mysql
         tools: composer
 

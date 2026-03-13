@@ -46,7 +46,7 @@ jobs:
     - name: Set up Node.js
       uses: actions/setup-node@v4
       with:
-        node-version: '18'
+        node-version: '14'
 
     # Instalar dependencias PHP (Laravel)
     - name: Install PHP dependencies
@@ -54,7 +54,7 @@ jobs:
 
     # Instalar dependencias JS
     - name: Install JS dependencies
-      run: yarn install --frozen-lockfile
+      run: yarn install --no-lockfile --ignore-engines
 
     # Compilar assets Vue.js + TailwindCSS con Vite
     - name: Build frontend assets

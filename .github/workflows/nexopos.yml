@@ -47,7 +47,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '18'
-        cache: 'npm'
+        cache: 'yarn'
 
     # Instalar dependencias PHP (Laravel)
     - name: Install PHP dependencies
@@ -55,11 +55,11 @@ jobs:
 
     # Instalar dependencias JS
     - name: Install JS dependencies
-      run: npm ci
+      run: yarn install --frozen-lockfile
 
     # Compilar assets Vue.js + TailwindCSS con Vite
     - name: Build frontend assets
-      run: npm run build
+      run: yarn build
 
     # Configurar .env desde .env.example
     - name: Configure .env file

@@ -56,7 +56,11 @@ jobs:
     - name: Install JS dependencies
       run: yarn install --no-lockfile --ignore-engines
 
-    # Compilar assets Vue.js + TailwindCSS con Vite
+    # Instalar tipos de TypeScript faltantes
+    - name: Install missing TypeScript types
+      run: yarn add @types/minimatch --dev --ignore-engines
+
+    # Compilar assets Vue.js + TailwindCSS con Laravel Mix
     - name: Build frontend assets
       run: yarn prod
 

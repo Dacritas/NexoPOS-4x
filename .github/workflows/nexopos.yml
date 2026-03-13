@@ -9,6 +9,9 @@ on:
 permissions:
   contents: read
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   build:
 
@@ -32,19 +35,19 @@ jobs:
           --health-retries=5
 
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v4.2.2
 
-    # PHP 8.1 con todas las extensiones requeridas por NexoPOS
+    # PHP 7.4 con todas las extensiones requeridas por NexoPOS
     - name: Set up PHP with required extensions
-      uses: shivammathur/setup-php@v2
+      uses: shivammathur/setup-php@v2.33.0
       with:
         php-version: '7.4'
         extensions: json, gd, bcmath, intl, openssl, mbstring, curl, xml, mysqli, zip, pdo, pdo_mysql
         tools: composer
 
-    # Node.js para compilar assets con Vite/Vue
+    # Node.js 14 requerido por el proyecto
     - name: Set up Node.js
-      uses: actions/setup-node@v4
+      uses: actions/setup-node@v4.4.0
       with:
         node-version: '14'
 
@@ -60,7 +63,7 @@ jobs:
     - name: Install missing TypeScript types
       run: yarn add @types/minimatch --dev --ignore-engines
 
-    # Compilar assets Vue.js + TailwindCSS con Laravel Mix
+    # Compilar assets con Laravel Mix
     - name: Build frontend assets
       run: yarn prod
 
@@ -118,7 +121,7 @@ jobs:
 
     # Subir ZIP como artifact
     - name: Upload deployment ZIP
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.6.2
       with:
         name: nexopos-deploy
         path: nexopos-deploy.zip
@@ -126,7 +129,7 @@ jobs:
 
     # Subir backup de BD como artifact
     - name: Upload database backup
-      uses: actions/upload-artifact@v4
+      uses: actions/upload-artifact@v4.6.2
       with:
         name: nexopos-database-backup
         path: nexopos-database-backup.sql

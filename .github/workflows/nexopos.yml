@@ -87,12 +87,19 @@ jobs:
     - name: Run database migrations
       run: php artisan migrate --force
 
-    # Optimizar Laravel para producción
-    - name: Optimize Laravel for production
+    # Limpiar cachés del runner antes de empaquetar
+    # IMPORTANTE: config:cache NO se corre aquí porque guarda rutas absolutas
+    # del runner (/home/runner/work/...) que rompen el deploy en el servidor real.
+    # Estos comandos deben ejecutarse manualmente en el servidor después del deploy.
+    - name: Clear caches before packaging
       run: |
-        php artisan config:cache
-        # php artisan route:cache — disabled: duplicate route names in project
-        php artisan view:cache
+        php artisan config:clear
+        php artisan cache:clear
+        php artisan view:clear
+        rm -f bootstrap/cache/config.php
+        rm -f bootstrap/cache/routes*.php
+        rm -f bootstrap/cache/services.php
+        rm -f bootstrap/cache/packages.php
 
     # Crear backup de la base de datos migrada
     - name: Create database backup

@@ -9,15 +9,11 @@ on:
 permissions:
   contents: read
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 jobs:
   build:
 
     runs-on: ubuntu-latest
 
-    # MySQL service
     services:
       mysql:
         image: mysql:5.7
@@ -37,7 +33,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4.2.2
 
-    # PHP 7.4 con todas las extensiones requeridas por NexoPOS
     - name: Set up PHP with required extensions
       uses: shivammathur/setup-php@v2
       with:
@@ -45,29 +40,24 @@ jobs:
         extensions: json, gd, bcmath, intl, openssl, mbstring, curl, xml, mysqli, zip, pdo, pdo_mysql
         tools: composer
 
-    # Node.js 14 requerido por el proyecto
     - name: Set up Node.js
       uses: actions/setup-node@v4.4.0
       with:
         node-version: '14'
 
-    # Instalar dependencias PHP (Laravel)
     - name: Install PHP dependencies
       run: composer install --prefer-dist --no-progress --no-interaction
 
-    # Instalar dependencias JS
     - name: Install JS dependencies
       run: yarn install --no-lockfile --ignore-engines
 
-    # Instalar tipos de TypeScript faltantes
     - name: Install missing TypeScript types
       run: yarn add @types/minimatch --dev --ignore-engines
 
-    # Compilar assets con Laravel Mix
     - name: Build frontend assets
       run: yarn prod
 
-    # Configurar .env desde .env.example
+    # Configurar .env con prefijo correcto de NexoPOS
     - name: Configure .env file
       run: |
         cp .env.example .env
@@ -78,19 +68,42 @@ jobs:
         sed -i 's/^DB_USERNAME=.*/DB_USERNAME=nexopos_user/' .env
         sed -i 's/^DB_PASSWORD=.*/DB_PASSWORD=nexopos_password/' .env
         sed -i 's/^DB_PORT=.*/DB_PORT=3306/' .env
+        # Prefijo correcto de NexoPOS — las tablas usan ns_ como prefijo base
+        echo "DB_PREFIX=ns_" >> .env
 
-    # Generar app key de Laravel
     - name: Generate application key
       run: php artisan key:generate
 
-    # Ejecutar migraciones de base de datos
-    - name: Run database migrations
+    # Paso 1 — Migraciones base de Laravel
+    - name: Run base migrations
       run: php artisan migrate --force
 
-    # Limpiar cachés del runner antes de empaquetar
-    # IMPORTANTE: config:cache NO se corre aquí porque guarda rutas absolutas
-    # del runner (/home/runner/work/...) que rompen el deploy en el servidor real.
-    # Estos comandos deben ejecutarse manualmente en el servidor después del deploy.
+    # Paso 2 — Migraciones específicas de NexoPOS en orden correcto
+    - name: Run NexoPOS default migrations
+      run: php artisan migrate --path=database/migrations/default --force
+
+    - name: Run NexoPOS create-tables migrations
+      run: php artisan migrate --path=database/migrations/create-tables --force
+
+    - name: Run NexoPOS misc migrations
+      run: php artisan migrate --path=database/migrations/misc --force
+
+    # Paso 3 — Setup de NexoPOS: crea roles, permisos y usuario admin
+    # Debe correr ANTES de schema-updates porque esa migración necesita el usuario admin
+    - name: Run NexoPOS setup
+      run: |
+        php artisan ns:setup \
+          --store_name="NexoPOS" \
+          --admin_username="admin" \
+          --admin_email="admin@nexopos.com" \
+          --password="admin123" \
+          --no-interaction
+
+    # Paso 4 — schema-updates requiere que el admin ya exista
+    - name: Run NexoPOS schema-updates migrations
+      run: php artisan migrate --path=database/migrations/schema-updates --force
+
+    # Limpiar cachés del runner — NO usar config:cache (guarda rutas absolutas del runner)
     - name: Clear caches before packaging
       run: |
         php artisan config:clear
@@ -101,7 +114,7 @@ jobs:
         rm -f bootstrap/cache/services.php
         rm -f bootstrap/cache/packages.php
 
-    # Crear backup de la base de datos migrada
+    # Backup completo con datos (roles, permisos, usuario admin ya creados)
     - name: Create database backup
       run: |
         mysqldump -h 127.0.0.1 -u nexopos_user -pnexopos_password \
@@ -110,7 +123,7 @@ jobs:
           --triggers \
           nexopos > nexopos-database-backup.sql
 
-    # Crear ZIP de deploy (sin archivos innecesarios en producción)
+    # ZIP limpio sin archivos de desarrollo
     - name: Create deployment ZIP
       run: |
         zip -r nexopos-deploy.zip . \
@@ -126,7 +139,6 @@ jobs:
           --exclude "tailwind.config.*" \
           --exclude "postcss.config.*"
 
-    # Subir ZIP como artifact
     - name: Upload deployment ZIP
       uses: actions/upload-artifact@v4.6.2
       with:
@@ -134,7 +146,6 @@ jobs:
         path: nexopos-deploy.zip
         retention-days: 7
 
-    # Subir backup de BD como artifact
     - name: Upload database backup
       uses: actions/upload-artifact@v4.6.2
       with:

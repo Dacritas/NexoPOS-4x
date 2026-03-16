@@ -137,22 +137,22 @@ jobs:
           --triggers \
           nexopos > nexopos-database-backup.sql
 
-    # ZIP limpio sin archivos de desarrollo
+    # ZIP solo con archivos esenciales para deploy
     - name: Create deployment ZIP
       run: |
-        # Eliminar node_modules antes de empaquetar
-        rm -rf node_modules
-        zip -r nexopos-deploy.zip . \
-          --exclude "*.git*" \
-          --exclude "*/.github/*" \
-          --exclude "*/tests/*" \
-          --exclude "*.env.example" \
-          --exclude "*.md" \
-          --exclude "phpunit.xml*" \
-          --exclude "vite.config.*" \
-          --exclude "package*.json" \
-          --exclude "tailwind.config.*" \
-          --exclude "postcss.config.*"
+        zip -r nexopos-deploy.zip \
+          app/ \
+          bootstrap/ \
+          config/ \
+          database/ \
+          modules/ \
+          public/ \
+          routes/ \
+          storage/ \
+          artisan \
+          composer.json \
+          composer.lock \
+          .env
 
     - name: Upload deployment ZIP
       uses: actions/upload-artifact@v4.6.2

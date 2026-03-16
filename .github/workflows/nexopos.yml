@@ -99,6 +99,20 @@ jobs:
           --password="admin123" \
           --no-interaction
 
+    # Verificar que el admin existe antes de schema-updates
+    - name: Verify admin user exists
+      run: |
+        mysql -h 127.0.0.1 -u nexopos_user -pnexopos_password nexopos -e "
+          SELECT u.id, u.username, r.namespace 
+          FROM ns_nexopos_users u 
+          JOIN ns_nexopos_roles r ON r.id = (
+            SELECT role_id FROM ns_nexopos_users_attributes WHERE user_id = u.id LIMIT 1
+          ) LIMIT 5;
+        " 2>&1 || true
+        mysql -h 127.0.0.1 -u nexopos_user -pnexopos_password nexopos -e "
+          SELECT id, name, namespace FROM ns_nexopos_roles;
+        " 2>&1 || true
+
     # Paso 4 — schema-updates requiere que el admin ya exista
     - name: Run NexoPOS schema-updates migrations
       run: php artisan migrate --path=database/migrations/schema-updates --force
@@ -126,11 +140,12 @@ jobs:
     # ZIP limpio sin archivos de desarrollo
     - name: Create deployment ZIP
       run: |
+        # Eliminar node_modules antes de empaquetar
+        rm -rf node_modules
         zip -r nexopos-deploy.zip . \
           --exclude "*.git*" \
           --exclude "*/.github/*" \
           --exclude "*/tests/*" \
-          --exclude "*/node_modules/*" \
           --exclude "*.env.example" \
           --exclude "*.md" \
           --exclude "phpunit.xml*" \
